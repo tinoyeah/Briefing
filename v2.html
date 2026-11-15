@@ -1,0 +1,324 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="light dark">
+<title>Briefing del giorno (v2)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600&family=Newsreader:opsz,wght@6..72,400;6..72,600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#f3f5f4;--surface:#ffffff;--ink:#14201f;--muted:#5b6b69;--line:#d5dcda;
+  --accent:#0f6b5c;--up:#0f6b5c;--down:#b3261e;--warn:#9a6700;
+  --serif:"Newsreader",Georgia,"Times New Roman",serif;
+  --sans:"Instrument Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+}
+@media (prefers-color-scheme:dark){
+  :root{--bg:#0e1514;--surface:#162120;--ink:#e6ecea;--muted:#93a5a2;--line:#2a3a38;
+    --accent:#5cc4ae;--up:#5cc4ae;--down:#ff8a80;--warn:#e3b341}
+}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--bg);color:var(--ink);font:400 16px/1.5 var(--sans);
+  padding:env(safe-area-inset-top,0px) 0 env(safe-area-inset-bottom,0px)}
+.wrap{max-width:640px;margin:0 auto;padding:20px 18px 48px}
+header{padding:8px 0 18px;border-bottom:2px solid var(--ink)}
+header .day{font:600 34px/1.1 var(--serif);letter-spacing:-.01em;text-transform:capitalize;margin:0}
+header .sub{display:flex;justify-content:space-between;gap:12px;align-items:center;margin-top:10px;color:var(--muted);font-size:14px}
+button{font:500 14px var(--sans);color:var(--ink);background:transparent;border:1px solid var(--line);
+  border-radius:6px;padding:7px 12px;cursor:pointer}
+button:hover{border-color:var(--accent)}
+:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+section{padding:22px 0;border-bottom:1px solid var(--line)}
+h2{font:600 22px/1.2 var(--serif);margin:0 0 12px}
+h3{font:600 15px/1.3 var(--sans);margin:16px 0 6px;color:var(--muted)}
+.note{color:var(--muted);font-size:13px;margin:8px 0 0}
+.summary{font:400 18px/1.55 var(--serif);margin:0}
+.stale{color:var(--warn);font-size:13px;margin:0 0 8px}
+ul.clean{list-style:none;margin:0;padding:0}
+ul.clean li{padding:10px 0;border-top:1px solid var(--line)}
+ul.clean li:first-child{border-top:0}
+ul.clean a{color:var(--ink);text-decoration:none;display:block}
+ul.clean a:hover .t{text-decoration:underline}
+.t{display:block}
+.m{display:block;color:var(--muted);font-size:13px;margin-top:2px}
+.ledger{width:100%;border-collapse:collapse}
+.ledger th{font:500 13px var(--sans);color:var(--muted);text-align:left;padding:0 0 6px}
+.ledger th:not(:first-child),.ledger td:not(:first-child){text-align:right}
+.ledger td{padding:10px 0;border-top:1px solid var(--line);font-variant-numeric:tabular-nums}
+.ledger .pair{font-weight:600}
+.ledger .val{font:600 20px var(--serif)}
+.up{color:var(--up)}.down{color:var(--down)}
+.spark{width:84px;height:26px;vertical-align:middle;margin-left:10px}
+.links{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
+.links a{color:var(--ink);border:1px solid var(--line);border-radius:6px;padding:6px 10px;font-size:14px;text-decoration:none}
+.links a:hover{border-color:var(--accent)}
+.err{color:var(--down);font-size:14px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1 class="day" id="day"></h1>
+    <div class="sub"><span id="stamp">Carico i dati…</span><button id="refresh" type="button">Aggiorna</button></div>
+  </header>
+
+  <section id="s-summary" hidden>
+    <h2>Summary</h2>
+    <p class="stale" id="summary-stale" hidden></p>
+    <p class="summary" id="summary-text"></p>
+    <div id="cfo" hidden>
+      <h3>CFO e controlling</h3>
+      <ul class="clean" id="cfo-list"></ul>
+    </div>
+  </section>
+
+  <section id="s-mercati">
+    <h2>Mercati</h2>
+    <table class="ledger" aria-label="Cambi contro euro">
+      <thead><tr><th>Cambio</th><th>Valore</th><th>Var. g/g</th></tr></thead>
+      <tbody id="fx"><tr><td colspan="3">Carico…</td></tr></tbody>
+    </table>
+    <p class="note" id="fx-note"></p>
+    <h3>Energia e commodity food</h3>
+    <div class="links">
+      <a href="https://tradingeconomics.com/commodity/brent-crude-oil" target="_blank" rel="noopener">Brent</a>
+      <a href="https://tradingeconomics.com/commodity/eu-natural-gas" target="_blank" rel="noopener">TTF</a>
+      <a href="https://tradingeconomics.com/commodity/cocoa" target="_blank" rel="noopener">Cacao</a>
+      <a href="https://tradingeconomics.com/commodity/coffee" target="_blank" rel="noopener">Caffè</a>
+      <a href="https://tradingeconomics.com/commodity/sugar" target="_blank" rel="noopener">Zucchero</a>
+      <a href="https://tradingeconomics.com/commodity/wheat" target="_blank" rel="noopener">Grano</a>
+    </div>
+    <p class="note">Le quotazioni gratuite e affidabili non hanno un feed aperto: i link aprono la pagina del dato.</p>
+  </section>
+
+  <div id="feeds"></div>
+</div>
+
+<script>
+"use strict";
+var FEEDS = [
+  { id: "vertici", title: "Movimenti ai vertici", n: 4, when: "30d",
+    groups: [[null, "nomina nuovo CEO OR CFO OR amministratore delegato alimentare OR food OR largo consumo OR lusso OR moda"]] },
+  { id: "macro", title: "Macro e geopolitica", n: 3, when: "2d",
+    groups: [["Geopolitica", "Iran Hormuz OR Ucraina OR dazi USA negoziati"],
+             ["BCE e inflazione", "BCE tassi inflazione eurozona"]] },
+  { id: "materie", title: "Materie prime", n: 4, when: "3d",
+    groups: [[null, "prezzo cacao OR caffè OR zucchero OR grano OR pomodoro mercato"]] },
+  { id: "fmcg", title: "Corporate e FMCG", n: 5, when: "3d",
+    groups: [[null, "largo consumo food NielsenIQ OR Circana OR Ipsos OR Danone OR Nestlé OR Kraft Heinz OR Mutti"]] },
+  { id: "filiali", title: "Filiali estere", n: 2, when: "3d",
+    groups: [["Regno Unito", "UK economy OR inflation OR Bank of England OR grocery Tesco OR Sainsbury's", "en"],
+             ["Germania", "Germany economy OR inflation OR Bundesbank OR Ifo OR budget", "en"],
+             ["Francia e Benelux", "France OR Netherlands OR Belgium economy OR inflation OR budget OR strike", "en"],
+             ["Polonia", "Poland economy OR inflation OR zloty OR NBP", "en"],
+             ["Paesi nordici", "Sweden OR Norway OR Denmark OR Finland economy OR Riksbank OR Norges Bank OR inflation", "en"],
+             ["USA", "US economy OR Fed OR inflation OR tariffs OR consumer spending grocery", "en"],
+             ["Australia", "Australia economy OR RBA OR inflation OR Woolworths OR Coles", "en"]] },
+  { id: "gov", title: "Governance e lusso", n: 3, when: "3d",
+    groups: [["Governance", "corporate governance assemblea OR cda OR Consob OR opa Piazza Affari"],
+             ["Lusso e moda", "lusso moda Prada OR Kering OR LVMH OR Moncler"]] },
+  { id: "sport", title: "Sport", n: 2, when: "14d",
+    groups: [["Canoa slalom", "canoa slalom"],
+             ["Tennis", "ATP Slam OR Masters 1000 OR Sinner OR Cobolli"],
+             ["WRC", "WRC rally mondiale"]] }
+];
+var CACHE_MIN = 30;
+
+function $(s) { return document.querySelector(s); }
+function el(tag, cls, text) {
+  var e = document.createElement(tag);
+  if (cls) e.className = cls;
+  if (text != null) e.textContent = text;
+  return e;
+}
+function getJSON(url) {
+  return fetch(url).then(function (r) {
+    if (!r.ok) throw new Error("HTTP " + r.status);
+    return r.json();
+  });
+}
+function cacheGet(key) {
+  try {
+    var raw = localStorage.getItem(key);
+    if (!raw) return null;
+    var o = JSON.parse(raw);
+    if (Date.now() - o.t > CACHE_MIN * 60000) return null;
+    return o.v;
+  } catch (e) { return null; }
+}
+function cacheSet(key, v) {
+  try { localStorage.setItem(key, JSON.stringify({ t: Date.now(), v: v })); } catch (e) {}
+}
+function cached(key, loader, force) {
+  var hit = force ? null : cacheGet(key);
+  if (hit) return Promise.resolve(hit);
+  return loader().then(function (v) { cacheSet(key, v); return v; });
+}
+function fmtDate(iso) {
+  var d = new Date(iso);
+  return d.toLocaleDateString("it-IT", { day: "numeric", month: "short" });
+}
+function ago(pub) {
+  var d = new Date(String(pub).replace(" ", "T") + (/Z|[+-]\d\d:?\d\d$/.test(pub) ? "" : "Z"));
+  if (isNaN(d)) return "";
+  var h = Math.round((Date.now() - d.getTime()) / 3600000);
+  if (h < 1) return "meno di un’ora fa";
+  if (h < 24) return h + " h fa";
+  var g = Math.round(h / 24);
+  return g + (g === 1 ? " giorno fa" : " giorni fa");
+}
+
+/* ---------- Cambi (tassi di riferimento BCE via Frankfurter) ---------- */
+function sparkline(vals, down) {
+  var NS = "http://www.w3.org/2000/svg";
+  var svg = document.createElementNS(NS, "svg");
+  svg.setAttribute("class", "spark");
+  svg.setAttribute("viewBox", "0 0 84 26");
+  svg.setAttribute("aria-hidden", "true");
+  var min = Math.min.apply(null, vals), max = Math.max.apply(null, vals);
+  var span = max - min || 1;
+  var pts = vals.map(function (v, i) {
+    var x = vals.length === 1 ? 42 : (i / (vals.length - 1)) * 82 + 1;
+    var y = 24 - ((v - min) / span) * 22;
+    return x.toFixed(1) + "," + y.toFixed(1);
+  }).join(" ");
+  var pl = document.createElementNS(NS, "polyline");
+  pl.setAttribute("points", pts);
+  pl.setAttribute("fill", "none");
+  pl.setAttribute("stroke", "currentColor");
+  pl.setAttribute("stroke-width", "1.6");
+  svg.appendChild(pl);
+  svg.style.color = down ? "var(--down)" : "var(--up)";
+  return svg;
+}
+
+function loadFx(force) {
+  var start = new Date(Date.now() - 12 * 864e5).toISOString().slice(0, 10);
+  var url = "https://api.frankfurter.dev/v1/" + start + "..?base=EUR&symbols=USD,GBP,SEK,AUD,PLN,NOK";
+  return cached("fx2", function () { return getJSON(url); }, force).then(function (d) {
+    var days = Object.keys(d.rates).sort();
+    var last = days[days.length - 1], prev = days[days.length - 2];
+    var body = $("#fx");
+    body.textContent = "";
+    ["USD", "GBP", "AUD", "PLN", "SEK", "NOK"].forEach(function (cur) {
+      var series = days.map(function (k) { return d.rates[k][cur]; });
+      var v = d.rates[last][cur], p = prev ? d.rates[prev][cur] : v;
+      var chg = ((v - p) / p) * 100;
+      var tr = el("tr");
+      tr.appendChild(el("td", "pair", "EUR/" + cur));
+      var tdv = el("td");
+      tdv.appendChild(el("span", "val", v.toFixed(cur === "USD" || cur === "GBP" || cur === "AUD" ? 4 : 3)));
+      tdv.appendChild(sparkline(series, chg < 0));
+      tr.appendChild(tdv);
+      var tdc = el("td", chg < 0 ? "down" : "up", (chg >= 0 ? "+" : "") + chg.toFixed(2).replace(".", ",") + "%");
+      tr.appendChild(tdc);
+      body.appendChild(tr);
+    });
+    $("#fx-note").textContent = "Tassi di riferimento BCE del " + fmtDate(last) + ", con andamento degli ultimi giorni. Non sono quotazioni in tempo reale.";
+  }).catch(function () {
+    $("#fx").innerHTML = "";
+    var tr = el("tr"), td = el("td", "err", "Cambi non raggiungibili. Riprova con Aggiorna.");
+    td.colSpan = 3; tr.appendChild(td); $("#fx").appendChild(tr);
+  });
+}
+
+/* ---------- Titoli (Google News RSS via rss2json) ---------- */
+function feedUrl(q, when, lang) {
+  var loc = lang === "en" ? "&hl=en&gl=GB&ceid=GB:en" : "&hl=it&gl=IT&ceid=IT:it";
+  var rss = "https://news.google.com/rss/search?q=" + encodeURIComponent(q + " when:" + when) + loc;
+  return "https://api.rss2json.com/v1/api.json?rss_url=" + encodeURIComponent(rss);
+}
+function splitTitle(t) {
+  var i = t.lastIndexOf(" - ");
+  return i > 0 ? { title: t.slice(0, i), source: t.slice(i + 3) } : { title: t, source: "" };
+}
+function renderList(items, n) {
+  var ul = el("ul", "clean");
+  var seen = {};
+  var shown = 0;
+  items.forEach(function (it) {
+    if (shown >= n) return;
+    var s = splitTitle(it.title || "");
+    var key = s.title.toLowerCase().slice(0, 60);
+    if (seen[key]) return;
+    seen[key] = 1; shown++;
+    var li = el("li"), a = el("a");
+    a.href = it.link; a.target = "_blank"; a.rel = "noopener";
+    a.appendChild(el("span", "t", s.title));
+    a.appendChild(el("span", "m", [s.source, ago(it.pubDate)].filter(Boolean).join(" · ")));
+    li.appendChild(a); ul.appendChild(li);
+  });
+  if (!shown) ul.appendChild(el("li", "m", "Nulla di rilevante nel periodo."));
+  return ul;
+}
+function loadFeeds(force) {
+  var root = $("#feeds");
+  root.textContent = "";
+  var jobs = [];
+  var idx = 0;
+  FEEDS.forEach(function (f) {
+    var sec = el("section");
+    sec.appendChild(el("h2", null, f.title));
+    root.appendChild(sec);
+    f.groups.forEach(function (g) {
+      var box = el("div");
+      if (g[0]) box.appendChild(el("h3", null, g[0]));
+      box.appendChild(el("p", "note", "Carico…"));
+      sec.appendChild(box);
+      var key = "feed:" + f.id + ":" + g[1];
+      var delay = (!force && cacheGet(key)) ? 0 : (idx++) * 300;
+      var p = new Promise(function (res) { setTimeout(res, delay); })
+        .then(function () { return cached(key, function () { return getJSON(feedUrl(g[1], f.when, g[2])); }, force); })
+        .then(function (d) {
+          if (d.status !== "ok") throw new Error("feed");
+          box.removeChild(box.lastChild);
+          box.appendChild(renderList(d.items || [], f.n));
+        })
+        .catch(function () {
+          box.removeChild(box.lastChild);
+          box.appendChild(el("p", "err", "Fonte non raggiungibile. Riprova con Aggiorna."));
+        });
+      jobs.push(p);
+    });
+  });
+  return Promise.all(jobs);
+}
+
+/* ---------- Riassunto AI opzionale (summary.json, scritto una volta al giorno) ---------- */
+function loadSummary() {
+  return fetch("summary.json?v=" + Date.now()).then(function (r) {
+    if (!r.ok) throw new Error("no summary");
+    return r.json();
+  }).then(function (s) {
+    if (!s || !s.summary) return;
+    $("#s-summary").hidden = false;
+    $("#summary-text").textContent = s.summary;
+    var today = new Date().toISOString().slice(0, 10);
+    if (s.date && s.date !== today) {
+      var st = $("#summary-stale");
+      st.hidden = false;
+      st.textContent = "Riassunto del " + fmtDate(s.date) + ": non ancora aggiornato oggi.";
+    }
+    if (s.cfo && s.cfo.length) {
+      $("#cfo").hidden = false;
+      var ul = $("#cfo-list");
+      s.cfo.forEach(function (t) { ul.appendChild(el("li", null, t)); });
+    }
+  }).catch(function () { /* nessun riassunto: la sezione resta nascosta */ });
+}
+
+function run(force) {
+  $("#day").textContent = new Date().toLocaleDateString("it-IT", { weekday: "long", day: "numeric", month: "long" });
+  $("#stamp").textContent = "Carico i dati…";
+  Promise.all([loadFx(force), loadFeeds(force), loadSummary()]).then(function () {
+    $("#stamp").textContent = "Aggiornato alle " + new Date().toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit" });
+  });
+}
+$("#refresh").addEventListener("click", function () { run(true); });
+run(false);
+</script>
+</body>
+</html>
