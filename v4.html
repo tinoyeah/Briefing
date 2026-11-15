@@ -40,6 +40,7 @@ button:hover{border-color:var(--ac)}
 input,textarea{width:100%;background:var(--bg);color:var(--ink);border:1px solid var(--ln);border-radius:6px;padding:8px;font-size:16px;margin-top:3px}
 textarea{min-height:110px}
 .res{font-size:14px;margin:4px 0 0}
+.two{display:flex;gap:16px;margin:8px 0 2px}.two div{flex:1}.two .mu,.two .val{display:block}
 .up{color:var(--up)}.dn{color:var(--dn)}
 .mu{color:var(--mu);font-size:13px}
 .stale{color:var(--wn);font-size:13px;margin:0 0 8px}
@@ -252,9 +253,13 @@ function renderFx() {
     var sp = FX.s[cur], ch = (sp / FX.p[cur] - 1) * 100;
     var c = el("div", "card"), top = el("div", "top");
     top.appendChild(el("strong", null, "EUR/" + cur + " · " + CN[cur]));
-    top.appendChild(el("span", "val", fm(FX.a[cur], dec(cur))));
     c.appendChild(top);
-    c.appendChild(el("div", "mu", "Medio YTD su " + FX.n + " giorni · spot " + fm(sp, dec(cur)) + " (" + sg(ch, 2) + "% g/g) · BCE del " + FX.d));
+    var two = el("div", "two");
+    [["Ultimo (" + FX.d + ")", sp], ["Medio YTD (" + FX.n + " giorni)", FX.a[cur]]].forEach(function (x) {
+      var d = el("div"); d.appendChild(el("span", "mu", x[0])); d.appendChild(el("span", "val", fm(x[1], dec(cur)))); two.appendChild(d);
+    });
+    c.appendChild(two);
+    c.appendChild(el("div", "mu", "Ultimo: " + sg(ch, 2) + "% rispetto al giorno prima · tassi BCE"));
     var f = el("div", "f"), res = el("p", "res");
     [["budget", "Budget (" + cur + " per 1 €)"], ["ebitda", "EBITDA YTD (mln " + cur + ")"]].forEach(function (x) {
       var l = el("label", null, x[1]), inp = el("input");
@@ -345,7 +350,7 @@ function renderFil(i) {
     var c = calc(cur), line = el("p", "res");
     if (!FX || !FX.s[cur]) { line.className = "res mu"; line.textContent = "Cambio " + cur + " non disponibile."; }
     else {
-      line.textContent = "EUR/" + cur + " medio YTD " + fm(FX.a[cur], dec(cur)) + (c ? " · effetto sul budget " + sg(c.p, 1) + "%" : " · budget non inserito");
+      line.textContent = "EUR/" + cur + " ultimo " + fm(FX.s[cur], dec(cur)) + " · medio YTD " + fm(FX.a[cur], dec(cur)) + (c ? " · effetto sul budget " + sg(c.p, 1) + "%" : " · budget non inserito");
       line.className = "res " + (c && Math.abs(c.p) >= 0.05 ? (c.p < 0 ? "dn" : "up") : "mu");
       if (c && Math.abs(c.p) >= 1) qs.push("Il cambio pesa " + sg(c.p, 1) + "% sui risultati in " + cur + " rispetto al budget: quali azioni hai in corso?");
     }
