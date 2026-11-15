@@ -77,7 +77,7 @@ li.new::before{content:"";flex:none;width:8px;height:8px;border-radius:50%;backg
     </section>
     <section>
       <h2>Esposizione cambi</h2>
-      <p class="mu">Inserisci una volta il cambio di budget (valuta locale per 1 €) e l’EBITDA budget: la pagina mostra l’effetto della conversione rispetto a oggi. I dati restano su questo dispositivo.</p>
+      <p class="mu">Inserisci una volta il cambio di budget (valuta locale per 1 €) e l’EBITDA da inizio anno: la pagina mostra l’effetto della conversione rispetto al cambio medio da inizio anno (media dei tassi BCE giornalieri dal 1° gennaio). I dati restano su questo dispositivo.</p>
       <div id="fxcards"><p class="mu">Carico…</p></div>
     </section>
     <div class="row" style="padding-top:20px"><h2 style="margin:0">Novità</h2><button id="readall" type="button">Segna tutto letto</button></div>
@@ -233,7 +233,7 @@ function renderSaved() {
 
 /* ---------- Cambi e impatto sul budget ---------- */
 function calc(cur) {
-  var sp = FX && FX.s[cur], b = num(S.budget[cur]);
+  var sp = FX && FX.a && FX.a[cur], b = num(S.budget[cur]);
   if (!sp || !b) return null;
   return { p: (b / sp - 1) * 100, e: num(S.ebitda[cur]), sp: sp, b: b };
 }
@@ -241,8 +241,8 @@ function resText(cur, res) {
   var c = calc(cur);
   if (!c) { res.className = "res mu"; res.textContent = "Inserisci il cambio di budget per vedere l’effetto."; return; }
   res.className = "res " + (Math.abs(c.p) < 0.05 ? "mu" : c.p < 0 ? "dn" : "up");
-  var t = "Effetto conversione sui risultati in " + cur + ": " + sg(c.p, 1) + "%";
-  if (c.e) t += " · " + sg(c.e * (1 / c.sp - 1 / c.b), 2) + " mln € su " + fm(c.e, 1) + " mln " + cur + " di EBITDA";
+  var t = "Effetto conversione sui risultati in " + cur + " (cambio medio YTD contro budget): " + sg(c.p, 1) + "%";
+  if (c.e) t += " · " + sg(c.e * (1 / c.sp - 1 / c.b), 2) + " mln € su " + fm(c.e, 1) + " mln " + cur + " di EBITDA YTD";
   res.textContent = t;
 }
 function dec(cur) { return cur === "GBP" || cur === "USD" || cur === "AUD" ? 4 : 3; }
@@ -252,11 +252,11 @@ function renderFx() {
     var sp = FX.s[cur], ch = (sp / FX.p[cur] - 1) * 100;
     var c = el("div", "card"), top = el("div", "top");
     top.appendChild(el("strong", null, "EUR/" + cur + " · " + CN[cur]));
-    top.appendChild(el("span", "val", fm(sp, dec(cur))));
+    top.appendChild(el("span", "val", fm(FX.a[cur], dec(cur))));
     c.appendChild(top);
-    c.appendChild(el("div", "mu", "Var. g/g " + sg(ch, 2) + "% · tasso BCE del " + FX.d));
+    c.appendChild(el("div", "mu", "Medio YTD su " + FX.n + " giorni · spot " + fm(sp, dec(cur)) + " (" + sg(ch, 2) + "% g/g) · BCE del " + FX.d));
     var f = el("div", "f"), res = el("p", "res");
-    [["budget", "Budget (" + cur + " per 1 €)"], ["ebitda", "EBITDA budget (mln " + cur + ")"]].forEach(function (x) {
+    [["budget", "Budget (" + cur + " per 1 €)"], ["ebitda", "EBITDA YTD (mln " + cur + ")"]].forEach(function (x) {
       var l = el("label", null, x[1]), inp = el("input");
       inp.type = "text"; inp.inputMode = "decimal"; inp.value = S[x[0]][cur] || "";
       inp.addEventListener("input", function () { S[x[0]][cur] = inp.value; save(); resText(cur, res); });
@@ -265,12 +265,30 @@ function renderFx() {
     c.appendChild(f); c.appendChild(res); resText(cur, res); box.appendChild(c);
   });
 }
+function ytdWindows() {
+  var n = new Date(), end = Date.UTC(n.getFullYear(), n.getMonth(), n.getDate()), a = Date.UTC(n.getFullYear(), 0, 1), w = [], b, last;
+  while (a <= end) {
+    b = Math.min(a + 89 * 864e5, end); last = b === end;
+    w.push([new Date(a).toISOString().slice(0, 10), last ? "" : new Date(b).toISOString().slice(0, 10)]);
+    a = b + 864e5;
+  }
+  return w;
+}
 function loadFx(force) {
-  var st = new Date(Date.now() - 12 * 864e5).toISOString().slice(0, 10);
-  return cached("fx3", function () { return getJSON("https://api.frankfurter.dev/v1/" + st + "..?base=EUR&symbols=" + CUR.join(",")); }, force)
-    .then(function (d) {
-      var ds = Object.keys(d.rates).sort(), l = ds[ds.length - 1], p = ds[ds.length - 2] || l;
-      FX = { s: d.rates[l], p: d.rates[p], d: new Date(l).toLocaleDateString("it-IT", { day: "numeric", month: "short" }) };
+  return cached("fx4", function () {
+    return Promise.all(ytdWindows().map(function (w) {
+      return getJSON("https://api.frankfurter.dev/v1/" + w[0] + ".." + w[1] + "?base=EUR&symbols=" + CUR.join(","));
+    })).then(function (parts) {
+      var m = {};
+      parts.forEach(function (d) { Object.keys(d.rates || {}).forEach(function (k) { m[k] = d.rates[k]; }); });
+      return m;
+    });
+  }, force)
+    .then(function (m) {
+      var ds = Object.keys(m).sort(), l = ds[ds.length - 1], p = ds[ds.length - 2] || l, a = {};
+      if (!ds.length) throw new Error("vuoto");
+      CUR.forEach(function (c) { var t = 0; ds.forEach(function (k) { t += m[k][c]; }); a[c] = t / ds.length; });
+      FX = { s: m[l], p: m[p], a: a, n: ds.length, d: new Date(l).toLocaleDateString("it-IT", { day: "numeric", month: "short" }) };
       renderFx();
       if (FSEL != null && !$("#tab-filiali").hidden) renderFil(FSEL);
     })
@@ -327,7 +345,7 @@ function renderFil(i) {
     var c = calc(cur), line = el("p", "res");
     if (!FX || !FX.s[cur]) { line.className = "res mu"; line.textContent = "Cambio " + cur + " non disponibile."; }
     else {
-      line.textContent = "EUR/" + cur + " " + fm(FX.s[cur], dec(cur)) + (c ? " · effetto sul budget " + sg(c.p, 1) + "%" : " · budget non inserito");
+      line.textContent = "EUR/" + cur + " medio YTD " + fm(FX.a[cur], dec(cur)) + (c ? " · effetto sul budget " + sg(c.p, 1) + "%" : " · budget non inserito");
       line.className = "res " + (c && Math.abs(c.p) >= 0.05 ? (c.p < 0 ? "dn" : "up") : "mu");
       if (c && Math.abs(c.p) >= 1) qs.push("Il cambio pesa " + sg(c.p, 1) + "% sui risultati in " + cur + " rispetto al budget: quali azioni hai in corso?");
     }
