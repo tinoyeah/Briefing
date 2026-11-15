@@ -1,0 +1,407 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="light dark">
+<title>Cockpit CFO</title>
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#0f6b5c">
+<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600&family=Newsreader:opsz,wght@6..72,400;6..72,600&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#f3f5f4;--sf:#fff;--ink:#14201f;--mu:#5b6b69;--ln:#d5dcda;--ac:#0f6b5c;--up:#0f6b5c;--dn:#b3261e;--wn:#9a6700;
+--serif:"Newsreader",Georgia,serif;--sans:"Instrument Sans",system-ui,-apple-system,"Segoe UI",sans-serif}
+@media(prefers-color-scheme:dark){:root{--bg:#0e1514;--sf:#162120;--ink:#e6ecea;--mu:#93a5a2;--ln:#2a3a38;--ac:#5cc4ae;--up:#5cc4ae;--dn:#ff8a80;--wn:#e3b341}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:400 16px/1.5 var(--sans);padding:env(safe-area-inset-top,0px) 0 calc(76px + env(safe-area-inset-bottom,0px))}
+.wrap{max-width:640px;margin:0 auto;padding:20px 18px}
+header{padding:8px 0 16px;border-bottom:2px solid var(--ink)}
+h1{font:600 32px/1.1 var(--serif);margin:0;text-transform:capitalize}
+.sub{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-top:10px;color:var(--mu);font-size:14px}
+h2{font:600 22px/1.2 var(--serif);margin:0 0 10px}
+h3{font:600 14px var(--sans);color:var(--mu);margin:14px 0 6px}
+section{padding:20px 0;border-bottom:1px solid var(--ln)}
+button,input,textarea{font:inherit}
+button{font-size:14px;font-weight:500;color:var(--ink);background:transparent;border:1px solid var(--ln);border-radius:6px;padding:7px 12px;cursor:pointer}
+button:hover{border-color:var(--ac)}
+:focus-visible{outline:3px solid var(--ac);outline-offset:2px}
+.row{display:flex;justify-content:space-between;align-items:center;gap:10px}
+.chips{display:flex;gap:8px;overflow-x:auto;padding:2px 0 10px}
+.chips button{white-space:nowrap}
+.chips button[aria-pressed=true]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.card{background:var(--sf);border:1px solid var(--ln);border-radius:8px;padding:12px 14px;margin:0 0 10px}
+.top{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+.val{font:600 22px var(--serif);font-variant-numeric:tabular-nums}
+.f{display:flex;gap:10px;margin:10px 0 6px}
+.f label{flex:1;font-size:12px;color:var(--mu);display:block}
+input,textarea{width:100%;background:var(--bg);color:var(--ink);border:1px solid var(--ln);border-radius:6px;padding:8px;font-size:16px;margin-top:3px}
+textarea{min-height:110px}
+.res{font-size:14px;margin:4px 0 0}
+.up{color:var(--up)}.dn{color:var(--dn)}
+.mu{color:var(--mu);font-size:13px}
+.stale{color:var(--wn);font-size:13px;margin:0 0 8px}
+.sum{font:400 18px/1.55 var(--serif);margin:0}
+ul{list-style:none;margin:0;padding:0}
+li.it{display:flex;gap:8px;align-items:flex-start;padding:10px 0;border-top:1px solid var(--ln)}
+li.it:first-child{border-top:0}
+li.it a{flex:1;color:var(--ink);text-decoration:none}
+li.it a:hover .t{text-decoration:underline}
+.t{display:block}.m{display:block;color:var(--mu);font-size:13px;margin-top:2px}
+li.new .t{font-weight:600}
+li.new::before{content:"";flex:none;width:8px;height:8px;border-radius:50%;background:var(--ac);margin-top:9px}
+.st{border:0;padding:4px 6px;font-size:18px;line-height:1}
+.err{color:var(--dn);font-size:14px}
+.q li{padding:7px 0;border-top:1px solid var(--ln)}
+.q li:first-child{border-top:0}
+.tabs{position:fixed;left:0;right:0;bottom:0;display:flex;background:var(--sf);border-top:1px solid var(--ln);padding-bottom:env(safe-area-inset-bottom,0px)}
+.tabs button{flex:1;border:0;border-radius:0;padding:16px 4px;font-size:15px}
+.tabs button[aria-selected=true]{color:var(--ac);box-shadow:inset 0 3px 0 var(--ac)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1 id="day"></h1>
+    <div class="sub"><span id="stamp">Carico i dati…</span><button id="refresh" type="button">Aggiorna</button></div>
+  </header>
+
+  <div id="tab-oggi">
+    <section id="coach" hidden>
+      <h2>Il punto del giorno</h2>
+      <p class="stale" id="stale" hidden></p>
+      <p class="sum" id="sumtext"></p>
+      <ul class="q" id="cfo"></ul>
+    </section>
+    <section>
+      <h2>Esposizione cambi</h2>
+      <p class="mu">Inserisci una volta il cambio di budget (valuta locale per 1 €) e l’EBITDA budget: la pagina mostra l’effetto della conversione rispetto a oggi. I dati restano su questo dispositivo.</p>
+      <div id="fxcards"><p class="mu">Carico…</p></div>
+    </section>
+    <div class="row" style="padding-top:20px"><h2 style="margin:0">Novità</h2><button id="readall" type="button">Segna tutto letto</button></div>
+    <div class="chips" id="chips" style="padding-top:10px"></div>
+    <div id="themes"></div>
+  </div>
+
+  <div id="tab-filiali" hidden>
+    <section style="border:0;padding-bottom:0"><h2>Prepara la call</h2><div class="chips" id="fchips"></div></section>
+    <div id="fbody"></div>
+  </div>
+
+  <div id="tab-radar" hidden>
+    <section><h2>Da discutere</h2><ul id="saved"></ul></section>
+  </div>
+</div>
+
+<nav class="tabs" role="tablist" aria-label="Sezioni">
+  <button id="b-oggi" type="button" role="tab" aria-selected="true">Oggi</button>
+  <button id="b-filiali" type="button" role="tab" aria-selected="false">Filiali</button>
+  <button id="b-radar" type="button" role="tab" aria-selected="false">Radar</button>
+</nav>
+
+<script>
+"use strict";
+var THEMES = [
+  { id: "vertici", title: "Movimenti ai vertici", n: 4, when: "30d",
+    groups: [[null, "nomina nuovo CEO OR CFO OR amministratore delegato alimentare OR food OR largo consumo OR lusso OR moda"]] },
+  { id: "macro", title: "Macro e geopolitica", n: 3, when: "2d",
+    groups: [["Geopolitica", "Iran Hormuz OR Ucraina OR dazi USA negoziati"], ["BCE e inflazione", "BCE tassi inflazione eurozona"]] },
+  { id: "materie", title: "Materie prime", n: 4, when: "3d",
+    groups: [[null, "prezzo cacao OR caffè OR zucchero OR grano OR pomodoro mercato"]] },
+  { id: "fmcg", title: "Corporate e FMCG", n: 5, when: "3d",
+    groups: [[null, "largo consumo food NielsenIQ OR Circana OR Ipsos OR Danone OR Nestlé OR Kraft Heinz OR Mutti"]] },
+  { id: "gov", title: "Governance e lusso", n: 3, when: "3d",
+    groups: [["Governance", "corporate governance assemblea OR cda OR Consob OR opa Piazza Affari"], ["Lusso e moda", "lusso moda Prada OR Kering OR LVMH OR Moncler"]] },
+  { id: "sport", title: "Sport", n: 2, when: "14d",
+    groups: [["Canoa slalom", "canoa slalom"], ["Tennis", "ATP Slam OR Masters 1000 OR Sinner OR Cobolli"], ["WRC", "WRC rally mondiale"]] }
+];
+var FIL = [
+  { k: "Regno Unito", cur: ["GBP"], q: "UK economy OR inflation OR Bank of England OR grocery Tesco OR Sainsbury's" },
+  { k: "Germania", cur: [], q: "Germany economy OR inflation OR Bundesbank OR Ifo OR budget" },
+  { k: "Francia e Benelux", cur: [], q: "France OR Netherlands OR Belgium economy OR inflation OR budget OR strike" },
+  { k: "Polonia", cur: ["PLN"], q: "Poland economy OR inflation OR zloty OR NBP" },
+  { k: "Paesi nordici", cur: ["SEK", "NOK"], q: "Sweden OR Norway OR Denmark OR Finland economy OR Riksbank OR Norges Bank OR inflation" },
+  { k: "USA", cur: ["USD"], q: "US economy OR Fed OR inflation OR tariffs OR consumer spending grocery" },
+  { k: "Australia", cur: ["AUD"], q: "Australia economy OR RBA OR inflation OR Woolworths OR Coles" }
+];
+var CUR = ["GBP", "USD", "AUD", "PLN", "SEK", "NOK"];
+var CN = { GBP: "Regno Unito", USD: "USA", AUD: "Australia", PLN: "Polonia", SEK: "Nordici", NOK: "Nordici" };
+var QS = [
+  "Quali costi (energia, materie prime, personale) stanno uscendo dal budget e perché?",
+  "Dove vedi pressione sui prezzi o sulla marca del distributore?",
+  "Qual è oggi il rischio principale sul forecast del trimestre?",
+  "Cosa ti serve da me o dal gruppo questo mese?",
+  "Quali segnali anticipano il primo trimestre del prossimo anno?",
+  "Che cosa dicono i clienti della distribuzione su promozioni e listini?",
+  "Quale decisione stai rimandando e cosa ti serve per prenderla?",
+  "Cosa ha funzionato meglio del previsto negli ultimi due mesi?"
+];
+var CACHE_MIN = 30, FX = null, FSEL = null;
+var S = (function () {
+  try { var o = JSON.parse(localStorage.getItem("cfo3")); if (o && o.budget) return o; } catch (e) {}
+  return { budget: {}, ebitda: {}, saved: [], seen: [], notes: {} };
+})();
+
+function save() { try { localStorage.setItem("cfo3", JSON.stringify(S)); } catch (e) {} }
+function $(s) { return document.querySelector(s); }
+function el(t, c, x) { var e = document.createElement(t); if (c) e.className = c; if (x != null) e.textContent = x; return e; }
+function num(v) { var n = parseFloat(String(v == null ? "" : v).replace(",", ".")); return isNaN(n) ? null : n; }
+function fm(n, d) { return n.toFixed(d).replace(".", ","); }
+function sg(n, d) { return (n > 0 ? "+" : n < 0 ? "−" : "") + fm(Math.abs(n), d); }
+function hash(s) { var h = 5381, i; for (i = 0; i < s.length; i++) h = ((h << 5) + h + s.charCodeAt(i)) | 0; return (h >>> 0).toString(36); }
+function safe(u) { return /^https?:\/\//.test(u || "") ? u : "#"; }
+function getJSON(u) { return fetch(u).then(function (r) { if (!r.ok) throw new Error(r.status); return r.json(); }); }
+function cacheGet(k) {
+  try { var o = JSON.parse(localStorage.getItem(k)); if (o && Date.now() - o.t < CACHE_MIN * 60000) return o.v; } catch (e) {}
+  return null;
+}
+function cached(k, loader, force) {
+  var hit = force ? null : cacheGet(k);
+  if (hit) return Promise.resolve(hit);
+  return loader().then(function (v) { try { localStorage.setItem(k, JSON.stringify({ t: Date.now(), v: v })); } catch (e) {} return v; });
+}
+function ago(p) {
+  var d = new Date(String(p).replace(" ", "T") + (/Z|[+-]\d\d:?\d\d$/.test(p) ? "" : "Z"));
+  if (isNaN(d)) return "";
+  var h = Math.round((Date.now() - d.getTime()) / 3600000);
+  if (h < 1) return "meno di un’ora fa";
+  if (h < 24) return h + " h fa";
+  var g = Math.round(h / 24);
+  return g + (g === 1 ? " giorno fa" : " giorni fa");
+}
+function fUrl(q, w, l) {
+  var loc = l === "en" ? "&hl=en&gl=GB&ceid=GB:en" : "&hl=it&gl=IT&ceid=IT:it";
+  var rss = "https://news.google.com/rss/search?q=" + encodeURIComponent(q + " when:" + w) + loc;
+  return "https://api.rss2json.com/v1/api.json?rss_url=" + encodeURIComponent(rss);
+}
+function stt(t) { var i = t.lastIndexOf(" - "); return i > 0 ? { t: t.slice(0, i), s: t.slice(i + 3) } : { t: t, s: "" }; }
+function feed(q, w, l, force, delay) {
+  return new Promise(function (r) { setTimeout(r, delay || 0); })
+    .then(function () { return cached("feed:" + q + w, function () { return getJSON(fUrl(q, w, l)); }, force); })
+    .then(function (d) { if (d.status !== "ok") throw new Error("feed"); return d.items || []; });
+}
+function markSeen(h) {
+  if (S.seen.indexOf(h) < 0) { S.seen.push(h); if (S.seen.length > 400) S.seen = S.seen.slice(-400); save(); }
+}
+
+/* ---------- Notizie: segna letto, segna da discutere ---------- */
+function items(ul, list, n) {
+  var dup = {}, k = 0;
+  list.forEach(function (it) {
+    if (k >= n) return;
+    var s = stt(it.title || ""), key = s.t.toLowerCase().slice(0, 60);
+    if (dup[key]) return;
+    dup[key] = 1; k++;
+    var h = hash(it.link || s.t), li = el("li", "it" + (S.seen.indexOf(h) < 0 ? " new" : ""));
+    li.dataset.h = h;
+    var a = el("a"); a.href = safe(it.link); a.target = "_blank"; a.rel = "noopener";
+    a.appendChild(el("span", "t", s.t));
+    a.appendChild(el("span", "m", [s.s, ago(it.pubDate)].filter(Boolean).join(" · ")));
+    a.addEventListener("click", function () { markSeen(h); li.classList.remove("new"); });
+    var b = el("button", "st"); b.type = "button";
+    var on = function () { return S.saved.some(function (x) { return x.h === h; }); };
+    var paint = function () {
+      b.textContent = on() ? "★" : "☆";
+      b.setAttribute("aria-pressed", String(on()));
+      b.setAttribute("aria-label", on() ? "Togli da discutere" : "Segna da discutere");
+    };
+    paint();
+    b.addEventListener("click", function () {
+      if (on()) S.saved = S.saved.filter(function (x) { return x.h !== h; });
+      else S.saved.unshift({ h: h, t: s.t, l: it.link, s: s.s });
+      S.saved = S.saved.slice(0, 50);
+      save(); paint(); renderSaved();
+    });
+    li.appendChild(a); li.appendChild(b); ul.appendChild(li);
+  });
+  if (!k) ul.appendChild(el("li", "mu", "Nulla di rilevante nel periodo."));
+}
+function renderSaved() {
+  var ul = $("#saved"); ul.textContent = "";
+  if (!S.saved.length) { ul.appendChild(el("li", "mu", "Tocca la stella accanto a una notizia per metterla qui.")); return; }
+  S.saved.forEach(function (x) {
+    var li = el("li", "it"), a = el("a");
+    a.href = safe(x.l); a.target = "_blank"; a.rel = "noopener";
+    a.appendChild(el("span", "t", x.t)); a.appendChild(el("span", "m", x.s));
+    var b = el("button", "st", "✕"); b.type = "button"; b.setAttribute("aria-label", "Togli");
+    b.addEventListener("click", function () { S.saved = S.saved.filter(function (y) { return y.h !== x.h; }); save(); renderSaved(); });
+    li.appendChild(a); li.appendChild(b); ul.appendChild(li);
+  });
+}
+
+/* ---------- Cambi e impatto sul budget ---------- */
+function calc(cur) {
+  var sp = FX && FX.s[cur], b = num(S.budget[cur]);
+  if (!sp || !b) return null;
+  return { p: (b / sp - 1) * 100, e: num(S.ebitda[cur]), sp: sp, b: b };
+}
+function resText(cur, res) {
+  var c = calc(cur);
+  if (!c) { res.className = "res mu"; res.textContent = "Inserisci il cambio di budget per vedere l’effetto."; return; }
+  res.className = "res " + (Math.abs(c.p) < 0.05 ? "mu" : c.p < 0 ? "dn" : "up");
+  var t = "Effetto conversione sui risultati in " + cur + ": " + sg(c.p, 1) + "%";
+  if (c.e) t += " · " + sg(c.e * (1 / c.sp - 1 / c.b), 2) + " mln € su " + fm(c.e, 1) + " mln " + cur + " di EBITDA";
+  res.textContent = t;
+}
+function dec(cur) { return cur === "GBP" || cur === "USD" || cur === "AUD" ? 4 : 3; }
+function renderFx() {
+  var box = $("#fxcards"); box.textContent = "";
+  CUR.forEach(function (cur) {
+    var sp = FX.s[cur], ch = (sp / FX.p[cur] - 1) * 100;
+    var c = el("div", "card"), top = el("div", "top");
+    top.appendChild(el("strong", null, "EUR/" + cur + " · " + CN[cur]));
+    top.appendChild(el("span", "val", fm(sp, dec(cur))));
+    c.appendChild(top);
+    c.appendChild(el("div", "mu", "Var. g/g " + sg(ch, 2) + "% · tasso BCE del " + FX.d));
+    var f = el("div", "f"), res = el("p", "res");
+    [["budget", "Budget (" + cur + " per 1 €)"], ["ebitda", "EBITDA budget (mln " + cur + ")"]].forEach(function (x) {
+      var l = el("label", null, x[1]), inp = el("input");
+      inp.type = "text"; inp.inputMode = "decimal"; inp.value = S[x[0]][cur] || "";
+      inp.addEventListener("input", function () { S[x[0]][cur] = inp.value; save(); resText(cur, res); });
+      l.appendChild(inp); f.appendChild(l);
+    });
+    c.appendChild(f); c.appendChild(res); resText(cur, res); box.appendChild(c);
+  });
+}
+function loadFx(force) {
+  var st = new Date(Date.now() - 12 * 864e5).toISOString().slice(0, 10);
+  return cached("fx3", function () { return getJSON("https://api.frankfurter.dev/v1/" + st + "..?base=EUR&symbols=" + CUR.join(",")); }, force)
+    .then(function (d) {
+      var ds = Object.keys(d.rates).sort(), l = ds[ds.length - 1], p = ds[ds.length - 2] || l;
+      FX = { s: d.rates[l], p: d.rates[p], d: new Date(l).toLocaleDateString("it-IT", { day: "numeric", month: "short" }) };
+      renderFx();
+      if (FSEL != null && !$("#tab-filiali").hidden) renderFil(FSEL);
+    })
+    .catch(function () { var b = $("#fxcards"); b.textContent = ""; b.appendChild(el("p", "err", "Cambi non raggiungibili. Tocca Aggiorna.")); });
+}
+
+/* ---------- Oggi: novità per tema ---------- */
+var THEME_SEL = "all";
+function applyFilter() {
+  var secs = $("#themes").children, i;
+  for (i = 0; i < secs.length; i++) secs[i].hidden = THEME_SEL !== "all" && secs[i].dataset.id !== THEME_SEL;
+}
+function buildChips() {
+  var box = $("#chips");
+  [{ id: "all", title: "Tutti" }].concat(THEMES).forEach(function (t) {
+    var b = el("button", null, t.title); b.type = "button"; b.setAttribute("aria-pressed", String(t.id === "all"));
+    b.addEventListener("click", function () {
+      THEME_SEL = t.id;
+      Array.prototype.forEach.call(box.children, function (x) { x.setAttribute("aria-pressed", String(x === b)); });
+      applyFilter();
+    });
+    box.appendChild(b);
+  });
+}
+function loadThemes(force) {
+  var root = $("#themes"), idx = 0, jobs = [];
+  root.textContent = "";
+  THEMES.forEach(function (t) {
+    var sec = el("section"); sec.dataset.id = t.id; sec.appendChild(el("h2", null, t.title)); root.appendChild(sec);
+    t.groups.forEach(function (g) {
+      var box = el("div"); if (g[0]) box.appendChild(el("h3", null, g[0]));
+      var ul = el("ul"); ul.appendChild(el("li", "mu", "Carico…")); box.appendChild(ul); sec.appendChild(box);
+      var dl = (!force && cacheGet("feed:" + g[1] + t.when)) ? 0 : (idx++) * 300;
+      jobs.push(feed(g[1], t.when, g[2], force, dl)
+        .then(function (it) { ul.textContent = ""; items(ul, it, t.n); })
+        .catch(function () { ul.textContent = ""; ul.appendChild(el("li", "err", "Fonte non raggiungibile. Tocca Aggiorna.")); }));
+    });
+  });
+  applyFilter();
+  return Promise.all(jobs);
+}
+
+/* ---------- Filiali: prepara la call ---------- */
+function pickQs(i) {
+  var d = Math.floor(Date.now() / 864e5), out = [], k;
+  for (k = 0; k < 3; k++) out.push(QS[(d + i * 2 + k * 3) % QS.length]);
+  return out;
+}
+function renderFil(i) {
+  var f = FIL[i], b = $("#fbody"); b.textContent = "";
+  var s1 = el("section"); s1.appendChild(el("h2", null, f.k));
+  var qs = pickQs(i);
+  f.cur.forEach(function (cur) {
+    var c = calc(cur), line = el("p", "res");
+    if (!FX || !FX.s[cur]) { line.className = "res mu"; line.textContent = "Cambio " + cur + " non disponibile."; }
+    else {
+      line.textContent = "EUR/" + cur + " " + fm(FX.s[cur], dec(cur)) + (c ? " · effetto sul budget " + sg(c.p, 1) + "%" : " · budget non inserito");
+      line.className = "res " + (c && Math.abs(c.p) >= 0.05 ? (c.p < 0 ? "dn" : "up") : "mu");
+      if (c && Math.abs(c.p) >= 1) qs.push("Il cambio pesa " + sg(c.p, 1) + "% sui risultati in " + cur + " rispetto al budget: quali azioni hai in corso?");
+    }
+    s1.appendChild(line);
+  });
+  if (!f.cur.length) s1.appendChild(el("p", "res mu", "Area euro: nessun effetto di conversione sul cambio."));
+  b.appendChild(s1);
+
+  var s2 = el("section"); s2.appendChild(el("h2", null, "Titoli del paese"));
+  var ul = el("ul"); ul.appendChild(el("li", "mu", "Carico…")); s2.appendChild(ul); b.appendChild(s2);
+  feed(f.q, "3d", "en", false, 0)
+    .then(function (it) { ul.textContent = ""; items(ul, it, 4); })
+    .catch(function () { ul.textContent = ""; ul.appendChild(el("li", "err", "Fonte non raggiungibile. Tocca Aggiorna.")); });
+
+  var s3 = el("section"); s3.appendChild(el("h2", null, "Domande per la call"));
+  var q = el("ul", "q"); qs.forEach(function (t) { q.appendChild(el("li", null, t)); }); s3.appendChild(q); b.appendChild(s3);
+
+  var s4 = el("section"); s4.appendChild(el("h2", null, "Appunti"));
+  var ta = el("textarea"); ta.value = S.notes[f.k] || ""; ta.setAttribute("aria-label", "Appunti " + f.k);
+  ta.addEventListener("input", function () { S.notes[f.k] = ta.value; save(); });
+  s4.appendChild(ta); b.appendChild(s4);
+}
+function selFil(i) {
+  FSEL = i;
+  Array.prototype.forEach.call($("#fchips").children, function (x, j) { x.setAttribute("aria-pressed", String(j === i)); });
+  renderFil(i);
+}
+function buildFil() {
+  FIL.forEach(function (f, i) {
+    var b = el("button", null, f.k); b.type = "button"; b.setAttribute("aria-pressed", "false");
+    b.addEventListener("click", function () { selFil(i); });
+    $("#fchips").appendChild(b);
+  });
+}
+
+/* ---------- Il punto del giorno (opzionale, summary.json) ---------- */
+function loadSummary() {
+  return fetch("summary.json?v=" + Date.now()).then(function (r) { if (!r.ok) throw new Error("no"); return r.json(); })
+    .then(function (s) {
+      if (!s || !s.summary) return;
+      $("#coach").hidden = false; $("#sumtext").textContent = s.summary;
+      if (s.date && s.date !== new Date().toISOString().slice(0, 10)) {
+        var st = $("#stale"); st.hidden = false;
+        st.textContent = "Riassunto del " + new Date(s.date).toLocaleDateString("it-IT", { day: "numeric", month: "short" }) + ": non ancora aggiornato oggi.";
+      }
+      (s.cfo || []).forEach(function (t) { $("#cfo").appendChild(el("li", null, t)); });
+    }).catch(function () {});
+}
+
+/* ---------- Schede e avvio ---------- */
+function tab(n) {
+  ["oggi", "filiali", "radar"].forEach(function (x) {
+    $("#tab-" + x).hidden = x !== n;
+    $("#b-" + x).setAttribute("aria-selected", String(x === n));
+  });
+  window.scrollTo(0, 0);
+  if (n === "filiali" && FSEL == null) selFil(0);
+  if (n === "radar") renderSaved();
+}
+["oggi", "filiali", "radar"].forEach(function (x) { $("#b-" + x).addEventListener("click", function () { tab(x); }); });
+$("#readall").addEventListener("click", function () {
+  Array.prototype.forEach.call(document.querySelectorAll("#themes li.new"), function (li) { markSeen(li.dataset.h); li.classList.remove("new"); });
+});
+function run(force) {
+  $("#day").textContent = new Date().toLocaleDateString("it-IT", { weekday: "long", day: "numeric", month: "long" });
+  $("#stamp").textContent = "Carico i dati…";
+  Promise.all([loadFx(force), loadThemes(force), loadSummary()]).then(function () {
+    $("#stamp").textContent = "Aggiornato alle " + new Date().toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit" });
+  });
+  if (FSEL != null && !$("#tab-filiali").hidden) renderFil(FSEL);
+}
+$("#refresh").addEventListener("click", function () { run(true); });
+buildChips(); buildFil(); renderSaved(); run(false);
+if ("serviceWorker" in navigator) { window.addEventListener("load", function () { navigator.serviceWorker.register("sw.js").catch(function () {}); }); }
+</script>
+</body>
+</html>
